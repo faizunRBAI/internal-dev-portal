@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- Suppress SpEL injection false positives in Spring JPA repos -->
+    <Match>
+        <Class name="~.*Repository"/>
+        <Bug pattern="SQL_INJECTION_SPRING_JDBC"/>
+    </Match>
+    <!-- DTO fields: intentional nullable / uninitialized patterns -->
+    <Match>
+        <Class name="~.*Dto"/>
+        <Bug pattern="UWF_UNWRITTEN_FIELD,UUF_UNUSED_FIELD"/>
+    </Match>
+    <!-- Entity lazy-load proxies -->
+    <Match>
+        <Class name="~.*Entity|.*entity.*"/>
+        <Bug pattern="SE_BAD_FIELD"/>
+    </Match>
+    <!-- Test classes -->
+    <Match>
+        <Class name="~.*Test|.*IT"/>
+        <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT,DLS_DEAD_LOCAL_STORE"/>
+    </Match>
+</FindBugsFilter>

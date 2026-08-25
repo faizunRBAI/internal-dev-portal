@@ -1,0 +1,25 @@
+# udap:meta cloud=aws region=us-east-1 target=ec2
+
+user: Developer { shape: person; udap-type: generic.user }
+github_ci: GitHub Actions CI/CD { shape: rectangle; udap-type: generic.app }
+ghcr: GHCR Container Registry { shape: rectangle; udap-type: generic.cdn }
+vpc: AWS VPC 10.0.0.0/16 {
+  eip: Elastic IP { shape: rectangle; udap-type: aws.ec2 }
+  sg: Security Group 22/80/443 { shape: rectangle; udap-type: generic.app }
+  ec2: EC2 t3.medium Ubuntu 22.04 { shape: rectangle; udap-type: aws.ec2 }
+  nginx: Nginx Reverse Proxy { shape: rectangle; udap-type: generic.app }
+  app: Spring Boot 3 Java 21 { shape: rectangle; udap-type: generic.app }
+  db: PostgreSQL 16 { shape: cylinder; udap-type: generic.db }
+  iam: IAM Role Instance Profile { shape: rectangle; udap-type: generic.app }
+}
+
+user -> vpc.eip: HTTP :80
+vpc.eip -> vpc.sg
+vpc.sg -> vpc.ec2: allowed traffic
+vpc.ec2 -> vpc.nginx
+vpc.nginx -> vpc.app: proxy_pass :8080
+vpc.app -> vpc.db: JDBC :5432
+vpc.ec2 -> vpc.iam: attached
+github_ci -> ghcr: docker push SHA
+github_ci -> vpc.ec2: Terraform + Puppet + Ansible
+ghcr -> vpc.app: docker pull on deploy

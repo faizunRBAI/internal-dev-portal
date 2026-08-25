@@ -1,0 +1,64 @@
+---
+# ansible/bootstrap.yml
+# Installs Puppet agent and applies site.pp manifests
+# Runs BEFORE the configure stage (Ansible site.yml)
+
+- name: Puppet Bootstrap
+  hosts: bootstrap
+  become: true
+  gather_facts: true
+
+  tasks:
+    - name: Wait for SSH to be ready
+      ansible.builtin.wait_for_connection:
+        delay: 5
+        timeout: 120
+
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+      register: apt_result
+      until: apt_result is succeeded
+      retries: 5
+      delay: 10
+
+    - name: Install prerequisite packages
+      ansible.builtin.apt:
+        name:
+          - wget
+          - curl
+          - gnupg
+        state: present
+
+    - name: Download Puppet 8 release package
+      ansible.builtin.get_url:
+        url: https://apt.puppet.com/puppet8-release-jammy.deb
+        dest: /tmp/puppet8-release-jammy.deb
+        mode: '0644'
+
+    - name: Install Puppet release package
+      ansible.builtin.apt:
+        deb: /tmp/puppet8-release-jammy.deb
+
+    - name: Update apt cache after adding Puppet repo
+      ansible.builtin.apt:
+        update_cache: true
+
+    - name: Install puppet-agent
+      ansible.builtin.apt:
+        name: puppet-agent
+        state: present
+
+    - name: Copy Puppet manifests to remote host
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/../puppet/"
+        dest: /tmp/puppet/
+        mode: '0644'
+
+    - name: Apply Puppet manifests
+      ansible.builtin.shell:
+        cmd: /opt/puppetlabs/bin/puppet apply /tmp/puppet/manifests/site.pp --detailed-exitcodes
+      register: puppet_result
+      # Puppet exit codes: 0=no changes, 2=success with changes, 4/6=failure
+      failed_when: puppet_result.rc not in [0, 2]
+      changed_when: puppet_result.rc == 2

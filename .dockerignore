@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+.mvn/wrapper/maven-wrapper.jar
+target/
+*.md
+docs/
+k6/
+puppet/
+ansible/
+infra/
+.env*
+*.log

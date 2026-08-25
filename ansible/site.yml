@@ -1,0 +1,163 @@
+---
+# ansible/site.yml
+# Deploy: Nginx + PostgreSQL Docker container + Spring Boot app container
+
+- name: Deploy Internal Developer Portal
+  hosts: app
+  become: true
+  gather_facts: true
+
+  vars:
+    app_port: 8080
+    db_port: 5432
+    db_name: idpdb
+    db_user: idpuser
+    nginx_conf_path: /etc/nginx/sites-available/idp
+    env_dir: /opt/idp
+    ghcr_image_lower: "{{ lookup('env', 'GHCR_IMAGE') | lower }}"
+    image_tag: "{{ lookup('env', 'IMAGE_TAG') }}"
+
+  tasks:
+
+    # ── Prepare env directory ─────────────────────────────────────────────
+    - name: Create application config directory
+      ansible.builtin.file:
+        path: "{{ env_dir }}"
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Write PostgreSQL env file from template
+      ansible.builtin.template:
+        src: templates/postgres.env.j2
+        dest: "{{ env_dir }}/postgres.env"
+        mode: '0600'
+        owner: root
+        group: root
+      no_log: true
+
+    - name: Write application env file from template
+      ansible.builtin.template:
+        src: templates/app.env.j2
+        dest: "{{ env_dir }}/app.env"
+        mode: '0600'
+        owner: root
+        group: root
+      no_log: true
+
+    # ── Nginx ──────────────────────────────────────────────────────────────
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name: nginx
+        state: present
+        update_cache: true
+
+    - name: Remove default Nginx site
+      ansible.builtin.file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: Write Nginx vhost config from template
+      ansible.builtin.template:
+        src: templates/nginx-idp.conf.j2
+        dest: "{{ nginx_conf_path }}"
+        mode: '0644'
+      notify: Reload Nginx
+
+    - name: Enable Nginx vhost
+      ansible.builtin.file:
+        src: "{{ nginx_conf_path }}"
+        dest: /etc/nginx/sites-enabled/idp
+        state: link
+      notify: Reload Nginx
+
+    - name: Ensure Nginx is running
+      ansible.builtin.service:
+        name: nginx
+        state: started
+        enabled: true
+
+    # ── GHCR login ─────────────────────────────────────────────────────────
+    - name: Log in to GHCR
+      ansible.builtin.shell:
+        cmd: echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GITHUB_ACTOR}" --password-stdin
+      environment:
+        GHCR_TOKEN: "{{ lookup('env', 'GHCR_TOKEN') }}"
+        GITHUB_ACTOR: "{{ lookup('env', 'GITHUB_ACTOR') }}"
+      no_log: true
+      changed_when: true
+
+    # ── PostgreSQL container ───────────────────────────────────────────────
+    - name: Pull PostgreSQL image
+      ansible.builtin.shell:
+        cmd: docker pull postgres:16-alpine
+      register: pg_pull
+      changed_when: "'Downloaded newer image' in pg_pull.stdout"
+
+    - name: Stop existing PostgreSQL container
+      ansible.builtin.shell:
+        cmd: docker rm -f idp-postgres
+      register: pg_rm
+      failed_when: pg_rm.rc not in [0, 1]
+      changed_when: pg_rm.rc == 0
+
+    - name: Start PostgreSQL container
+      ansible.builtin.shell:
+        cmd: >
+          docker run -d --name idp-postgres --restart unless-stopped
+          -p 127.0.0.1:{{ db_port }}:5432
+          --env-file {{ env_dir }}/postgres.env
+          postgres:16-alpine
+      changed_when: true
+
+    - name: Wait for PostgreSQL to be ready
+      ansible.builtin.shell:
+        cmd: docker exec idp-postgres pg_isready -U {{ db_user }} -d {{ db_name }}
+      register: pg_ready
+      until: pg_ready.rc == 0
+      retries: 15
+      delay: 5
+      changed_when: false
+
+    # ── Spring Boot app container ──────────────────────────────────────────
+    - name: Pull application Docker image
+      ansible.builtin.shell:
+        cmd: docker pull "{{ ghcr_image_lower }}:{{ image_tag }}"
+      register: app_pull
+      changed_when: "'Downloaded newer image' in app_pull.stdout"
+
+    - name: Stop existing application container
+      ansible.builtin.shell:
+        cmd: docker rm -f idp-app
+      register: app_rm
+      failed_when: app_rm.rc not in [0, 1]
+      changed_when: app_rm.rc == 0
+
+    - name: Start Spring Boot application container
+      ansible.builtin.shell:
+        cmd: >
+          docker run -d --name idp-app --restart unless-stopped
+          --link idp-postgres:idp-postgres
+          -p 127.0.0.1:{{ app_port }}:8080
+          --env-file {{ env_dir }}/app.env
+          "{{ ghcr_image_lower }}:{{ image_tag }}"
+      changed_when: true
+
+    - name: Wait for application health endpoint
+      ansible.builtin.shell:
+        cmd: curl -sf http://127.0.0.1:{{ app_port }}/actuator/health
+      register: health_check
+      until: health_check.rc == 0
+      retries: 20
+      delay: 15
+      changed_when: false
+
+    - name: Flush handlers
+      ansible.builtin.meta: flush_handlers
+
+  handlers:
+    - name: Reload Nginx
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
