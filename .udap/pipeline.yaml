@@ -196,7 +196,7 @@ stages:
       AWS_REGION: us-east-1
       DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
-      GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GITHUB_ACTOR: ${{ github.actor }}
       GHCR_IMAGE: ghcr.io/${{ github.repository }}
       IMAGE_TAG: ${{ github.sha }}
