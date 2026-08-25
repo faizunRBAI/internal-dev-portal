@@ -31,9 +31,9 @@ jobs:
         distribution: temurin
         cache: maven
     - name: Run unit tests
-      run: mvn test -B --no-transfer-progress -Dgroups=unit
+      run: mvn test -B --no-transfer-progress
     - name: Run integration tests
-      run: mvn verify -B --no-transfer-progress -Dgroups=integration
+      run: mvn failsafe:integration-test failsafe:verify -B --no-transfer-progress
     - name: Upload test reports
       uses: actions/upload-artifact@v4
       with:
