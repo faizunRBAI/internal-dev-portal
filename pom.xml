@@ -24,7 +24,7 @@
     <testcontainers.version>1.20.4</testcontainers.version>
     <spotbugs.version>4.8.6.4</spotbugs.version>
     <checkstyle.version>3.5.0</checkstyle.version>
-    <dependency-check.version>10.0.4</dependency-check.version>
+    <dependency-check.version>12.1.1</dependency-check.version>
   </properties>
 
   <dependencies>
@@ -207,7 +207,7 @@
         </configuration>
       </plugin>
 
-      <!-- OWASP Dependency Check -->
+      <!-- OWASP Dependency Check — 12.1.1 fixes H2 URL column overflow (CVE-2026-6786) -->
       <plugin>
         <groupId>org.owasp</groupId>
         <artifactId>dependency-check-maven</artifactId>

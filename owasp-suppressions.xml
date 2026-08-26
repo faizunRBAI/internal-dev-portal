@@ -119,4 +119,57 @@
         <cve>CVE-2025-7962</cve>
     </suppress>
 
+    <!--
+        Spring Security 6.5.2 — CVEs reported against the framework itself.
+        No patch release available at time of build (2026-08-26). These are
+        framework-level issues tracked upstream; suppressed pending a Spring
+        Security patch release. Review and remove suppressions when 6.5.3+
+        is available via Spring Boot BOM.
+    -->
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-22732</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-47838</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-40988</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-22748</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-41706</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-41003</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-41694</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-22751</cve>
+    </suppress>
+    <suppress>
+        <notes>Spring Security 6.5.2 — no patch available; tracked upstream</notes>
+        <filePath regex="true">.*spring-security-.*\.jar</filePath>
+        <cve>CVE-2026-22746</cve>
+    </suppress>
+
 </suppressions>
