@@ -207,7 +207,12 @@
         </configuration>
       </plugin>
 
-      <!-- OWASP Dependency Check — 12.1.1; OSS Index disabled (requires auth) -->
+      <!--
+        OWASP Dependency Check 12.1.1
+        OSS Index disabled — requires Sonatype credentials not available in CI.
+        NVD-only analysis is sufficient. Both config key variants supplied for
+        compatibility across 12.x sub-releases.
+      -->
       <plugin>
         <groupId>org.owasp</groupId>
         <artifactId>dependency-check-maven</artifactId>
@@ -217,6 +222,7 @@
           <suppressionFile>owasp-suppressions.xml</suppressionFile>
           <nvdApiDelay>2000</nvdApiDelay>
           <ossIndexAnalyzerEnabled>false</ossIndexAnalyzerEnabled>
+          <ossindexAnalyzerEnabled>false</ossindexAnalyzerEnabled>
         </configuration>
       </plugin>
     </plugins>
