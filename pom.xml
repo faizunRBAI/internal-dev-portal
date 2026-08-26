@@ -207,7 +207,7 @@
         </configuration>
       </plugin>
 
-      <!-- OWASP Dependency Check — 12.1.1 fixes H2 URL column overflow (CVE-2026-6786) -->
+      <!-- OWASP Dependency Check — 12.1.1; OSS Index disabled (requires auth) -->
       <plugin>
         <groupId>org.owasp</groupId>
         <artifactId>dependency-check-maven</artifactId>
@@ -216,6 +216,7 @@
           <failBuildOnCVSS>7</failBuildOnCVSS>
           <suppressionFile>owasp-suppressions.xml</suppressionFile>
           <nvdApiDelay>2000</nvdApiDelay>
+          <ossIndexAnalyzerEnabled>false</ossIndexAnalyzerEnabled>
         </configuration>
       </plugin>
     </plugins>
