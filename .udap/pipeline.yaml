@@ -57,7 +57,7 @@ stages:
       - name: Run SpotBugs analysis
         run: mvn spotbugs:check -B --no-transfer-progress
       - name: Run OWASP Dependency Check
-        run: mvn org.owasp:dependency-check-maven:check -B --no-transfer-progress -DfailBuildOnCVSS=7 -DsuppressionFile=owasp-suppressions.xml -DnvdApiKey=${{ secrets.NVD_API_KEY }}
+        run: mvn org.owasp:dependency-check-maven:check -B --no-transfer-progress -DfailBuildOnCVSS=7 -DsuppressionFile=owasp-suppressions.xml -DnvdApiKey=${{ secrets.NVD_API_KEY }} -DossIndexAnalyzerEnabled=false
       - name: Upload security reports
         uses: actions/upload-artifact@v4
         with:
