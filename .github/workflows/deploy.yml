@@ -45,7 +45,7 @@ jobs:
     - lint
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     steps:
     - uses: actions/checkout@v4
     - name: Set up Java 21

@@ -44,7 +44,7 @@ stages:
   - id: security
     kind: security
     needs: [lint]
-    timeout_minutes: 60
+    timeout_minutes: 120
     env:
       NVD_API_KEY: ${{ secrets.NVD_API_KEY }}
     steps:
