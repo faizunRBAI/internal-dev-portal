@@ -5,6 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -30,6 +33,11 @@ public class GlobalExceptionHandler {
             msg.append(fe.getField()).append(" ").append(fe.getDefaultMessage()).append("; ");
         }
         return buildResponse(HttpStatus.BAD_REQUEST, msg.toString());
+    }
+
+    @ExceptionHandler({BadCredentialsException.class, DisabledException.class, LockedException.class})
+    public ResponseEntity<Map<String, Object>> handleAuthenticationFailure(Exception ex) {
+        return buildResponse(HttpStatus.UNAUTHORIZED, "Invalid username or password.");
     }
 
     @ExceptionHandler(Exception.class)
