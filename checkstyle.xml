@@ -20,6 +20,13 @@
         <property name="checks" value="MagicNumber|JavadocMethod|JavadocVariable|LineLength"/>
     </module>
 
+    <!-- HomeController contains minified HTML/CSS/JS inside text blocks —
+         long lines are intentional and not real Java code lines -->
+    <module name="SuppressionSingleFilter">
+        <property name="files" value="HomeController\.java"/>
+        <property name="checks" value="LineLength"/>
+    </module>
+
     <module name="TreeWalker">
         <module name="SuppressWarningsHolder"/>
 
