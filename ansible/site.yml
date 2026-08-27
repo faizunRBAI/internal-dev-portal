@@ -88,6 +88,13 @@
       no_log: true
       changed_when: true
 
+    # ── Named volume for PostgreSQL data persistence ───────────────────────
+    - name: Create named Docker volume for PostgreSQL data
+      ansible.builtin.shell:
+        cmd: docker volume create idp-postgres-data
+      register: vol_create
+      changed_when: "'idp-postgres-data' in vol_create.stdout"
+
     # ── PostgreSQL container ───────────────────────────────────────────────
     - name: Pull PostgreSQL image
       ansible.builtin.shell:
@@ -102,11 +109,12 @@
       failed_when: pg_rm.rc not in [0, 1]
       changed_when: pg_rm.rc == 0
 
-    - name: Start PostgreSQL container
+    - name: Start PostgreSQL container with persistent named volume
       ansible.builtin.shell:
         cmd: >
           docker run -d --name idp-postgres --restart unless-stopped
           -p 127.0.0.1:{{ db_port }}:5432
+          -v idp-postgres-data:/var/lib/postgresql/data
           --env-file {{ env_dir }}/postgres.env
           postgres:16-alpine
       changed_when: true
