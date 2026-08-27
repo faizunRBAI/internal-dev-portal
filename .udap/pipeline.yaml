@@ -54,6 +54,13 @@ stages:
           java-version: '21'
           distribution: temurin
           cache: maven
+      - name: Cache OWASP NVD data
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/owasp/dependency-check-data
+          key: owasp-nvd-${{ runner.os }}-${{ hashFiles('pom.xml') }}
+          restore-keys: |
+            owasp-nvd-${{ runner.os }}-
       - name: Run SpotBugs analysis
         run: mvn spotbugs:check -B --no-transfer-progress
       - name: Run OWASP Dependency Check
