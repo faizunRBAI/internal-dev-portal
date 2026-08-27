@@ -18,6 +18,7 @@
     image_tag: "{{ lookup('env', 'IMAGE_TAG') }}"
     domain: devportal.royalbengal.xyz
     certbot_email: admin@royalbengal.xyz
+    db_password: "{{ lookup('env', 'DB_PASSWORD') }}"
 
   tasks:
 
@@ -176,6 +177,18 @@
       retries: 15
       delay: 5
       changed_when: false
+
+    # ── Sync DB password to match secret (handles named volume re-use) ─────
+    # The named volume keeps the password from initdb; ALTER USER ensures
+    # it always matches the current DB_PASSWORD secret, preventing auth
+    # failures when the secret is rotated.
+    - name: Sync DB user password to current secret
+      ansible.builtin.shell:
+        cmd: >
+          docker exec idp-postgres psql -U {{ db_user }} -d {{ db_name }}
+          -c "ALTER USER {{ db_user }} WITH PASSWORD '{{ db_password }}';"
+      no_log: true
+      changed_when: true
 
     # ── Spring Boot app container ──────────────────────────────────────────
     - name: Pull application Docker image
