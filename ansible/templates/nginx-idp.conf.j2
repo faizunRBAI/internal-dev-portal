@@ -1,9 +1,41 @@
 server {
     listen 80;
-    server_name _ devportal.royalbengal.xyz;
+    server_name devportal.royalbengal.xyz;
+    # Redirect all HTTP to HTTPS for the custom domain
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 80 default_server;
+    server_name _;
+    # Direct IP access stays on HTTP (no cert for bare IP)
     client_max_body_size 10m;
     gzip on;
     gzip_types text/plain application/json application/javascript text/css;
+
+    location / {
+        proxy_pass         http://127.0.0.1:{{ app_port }};
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name devportal.royalbengal.xyz;
+    client_max_body_size 10m;
+    gzip on;
+    gzip_types text/plain application/json application/javascript text/css;
+
+    ssl_certificate     /etc/letsencrypt/live/devportal.royalbengal.xyz/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/devportal.royalbengal.xyz/privkey.pem;
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_ciphers         HIGH:!aNULL:!MD5;
+    ssl_session_cache   shared:SSL:10m;
+    ssl_session_timeout 10m;
 
     location / {
         proxy_pass         http://127.0.0.1:{{ app_port }};

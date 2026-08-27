@@ -413,8 +413,11 @@ let modalMode = null; // {entity, action:'create'|'edit', item?}
 
 const BASE = '';
 
+const PAGE_TITLES = { projects:'Projects', teams:'Teams', environments:'Environments', deployments:'Deployments' };
+const CREATE_LABELS = { projects:'+ New Project', teams:'+ New Team', environments:'+ New Environment', deployments:'+ New Deployment' };
+
 // ══════════════════════════════════════════════════════════════════
-// BOOT
+// BOOT — restore session from localStorage
 // ══════════════════════════════════════════════════════════════════
 (function boot() {
   const saved = localStorage.getItem('idp_token');
@@ -501,29 +504,29 @@ async function doRegister() {
     });
     const data = await res.json();
     if (!res.ok) { showErr(errEl, data.message || 'Registration failed.'); return; }
-    okEl.textContent = '✓ Account created! Signing you in…'; okEl.style.display = 'block';
     token = data.token;
     currentUser = { username: data.username, role: data.role };
     localStorage.setItem('idp_token', token);
     localStorage.setItem('idp_user', JSON.stringify(currentUser));
-    setTimeout(() => showShell(), 800);
+    showShell();
   } catch(e2) { showErr(errEl, 'Network error. Please try again.'); }
   finally { btn.disabled = false; btn.textContent = 'Create account'; }
 }
 
+// ══════════════════════════════════════════════════════════════════
+// LOGOUT
+// ══════════════════════════════════════════════════════════════════
 function logout() {
   token = null; currentUser = null;
   localStorage.removeItem('idp_token');
   localStorage.removeItem('idp_user');
+  allData = { projects:[], teams:[], environments:[], deployments:[] };
   showAuth('login');
 }
 
 // ══════════════════════════════════════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════════════════════════════════════
-const PAGE_TITLES = { projects:'Projects', teams:'Teams', environments:'Environments', deployments:'Deployments' };
-const CREATE_LABELS = { projects:'+ New Project', teams:'+ New Team', environments:'+ New Environment', deployments:'+ New Deployment' };
-
 function navigate(page) {
   currentPage = page;
   ['projects','teams','environments','deployments'].forEach(p => {
@@ -551,6 +554,7 @@ async function api(method, path, body) {
   const res = await fetch(BASE + path, opts);
   if (res.status === 401) { logout(); return null; }
   if (res.status === 204) return {};
+  if (!res.ok) { const err = await res.json().catch(()=>({})); toast(err.message || 'Request failed', 'err'); return null; }
   return res.json();
 }
 
@@ -558,10 +562,6 @@ async function api(method, path, body) {
 // LOAD PAGE DATA
 // ══════════════════════════════════════════════════════════════════
 async function loadPage(page) {
-  const body = document.getElementById(page.slice(0,-1) === 'project' ? 'proj-body'
-    : page.slice(0,4) === 'team' ? 'team-body'
-    : page.slice(0,3) === 'env' ? 'env-body' : 'dep-body');
-
   const tbodyId = { projects:'proj-body', teams:'team-body', environments:'env-body', deployments:'dep-body' }[page];
   const tbody = document.getElementById(tbodyId);
   tbody.innerHTML = '<tr class="loading-row"><td colspan="10"><div class="spinner"></div></td></tr>';
@@ -701,34 +701,38 @@ function modalForm(entity, item) {
   if (entity === 'projects') return `
     <div class="form-group"><label>Name</label><input type="text" id="f-name" value="${esc(v.name||'')}" placeholder="Project name"/></div>
     <div class="form-group"><label>Description</label><input type="text" id="f-desc" value="${esc(v.description||'')}" placeholder="Short description"/></div>
-    <div class="form-group"><label>Status</label><select id="f-status">
-      <option value="ACTIVE" ${v.status==='ACTIVE'?'selected':''}>Active</option>
-      <option value="INACTIVE" ${v.status==='INACTIVE'?'selected':''}>Inactive</option>
-      <option value="ARCHIVED" ${v.status==='ARCHIVED'?'selected':''}>Archived</option>
-    </select></div>`;
-
+    <div class="form-group"><label>Status</label>
+      <select id="f-status">
+        <option value="ACTIVE" ${v.status==='ACTIVE'?'selected':''}>Active</option>
+        <option value="INACTIVE" ${v.status==='INACTIVE'?'selected':''}>Inactive</option>
+        <option value="ARCHIVED" ${v.status==='ARCHIVED'?'selected':''}>Archived</option>
+      </select>
+    </div>`;
   if (entity === 'teams') return `
     <div class="form-group"><label>Name</label><input type="text" id="f-name" value="${esc(v.name||'')}" placeholder="Team name"/></div>
-    <div class="form-group"><label>Description</label><input type="text" id="f-desc" value="${esc(v.description||'')}" placeholder="What does this team own?"/></div>`;
-
+    <div class="form-group"><label>Description</label><input type="text" id="f-desc" value="${esc(v.description||'')}" placeholder="Short description"/></div>`;
   if (entity === 'environments') return `
-    <div class="form-group"><label>Name</label><input type="text" id="f-name" value="${esc(v.name||'')}" placeholder="e.g. production"/></div>
-    <div class="form-group"><label>Type</label><select id="f-type">
-      <option value="DEVELOPMENT" ${v.type==='DEVELOPMENT'?'selected':''}>Development</option>
-      <option value="STAGING" ${v.type==='STAGING'?'selected':''}>Staging</option>
-      <option value="PRODUCTION" ${v.type==='PRODUCTION'?'selected':''}>Production</option>
-    </select></div>
-    <div class="form-group"><label>Project ID</label><input type="text" id="f-projectId" value="${esc(String(v.projectId||''))}" placeholder="Project numeric ID"/></div>`;
-
+    <div class="form-group"><label>Name</label><input type="text" id="f-name" value="${esc(v.name||'')}" placeholder="Environment name"/></div>
+    <div class="form-group"><label>Type</label>
+      <select id="f-type">
+        <option value="DEV" ${v.type==='DEV'?'selected':''}>Development</option>
+        <option value="STAGING" ${v.type==='STAGING'?'selected':''}>Staging</option>
+        <option value="PRODUCTION" ${v.type==='PRODUCTION'?'selected':''}>Production</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Project ID</label><input type="text" id="f-projectId" value="${esc(String(v.projectId||''))}" placeholder="Project ID (number)"/></div>`;
   if (entity === 'deployments') return `
     <div class="form-group"><label>Version</label><input type="text" id="f-version" value="${esc(v.version||'')}" placeholder="e.g. v1.2.3"/></div>
-    <div class="form-group"><label>Status</label><select id="f-dep-status">
-      <option value="PENDING" ${v.status==='PENDING'?'selected':''}>Pending</option>
-      <option value="IN_PROGRESS" ${v.status==='IN_PROGRESS'?'selected':''}>In Progress</option>
-      <option value="SUCCESS" ${v.status==='SUCCESS'?'selected':''}>Success</option>
-      <option value="FAILED" ${v.status==='FAILED'?'selected':''}>Failed</option>
-    </select></div>
-    <div class="form-group"><label>Environment ID</label><input type="text" id="f-envId" value="${esc(String(v.environmentId||''))}" placeholder="Environment numeric ID"/></div>`;
+    <div class="form-group"><label>Status</label>
+      <select id="f-dep-status">
+        <option value="PENDING" ${v.status==='PENDING'?'selected':''}>Pending</option>
+        <option value="IN_PROGRESS" ${v.status==='IN_PROGRESS'?'selected':''}>In Progress</option>
+        <option value="SUCCESS" ${v.status==='SUCCESS'?'selected':''}>Success</option>
+        <option value="FAILED" ${v.status==='FAILED'?'selected':''}>Failed</option>
+        <option value="ROLLED_BACK" ${v.status==='ROLLED_BACK'?'selected':''}>Rolled Back</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Environment ID</label><input type="text" id="f-envId" value="${esc(String(v.environmentId||''))}" placeholder="Environment ID (number)"/></div>`;
   return '';
 }
 
@@ -766,42 +770,34 @@ function filterTable(page) { renderPage(page); }
 // ══════════════════════════════════════════════════════════════════
 function fv(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function emptyState(icon, msg) { return `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">${icon}</div><p>${msg}</p></div></td></tr>`; }
 function showErr(el, msg) { el.textContent = msg; el.style.display = 'block'; }
+
+function toast(msg, type='ok') {
+  const t = document.createElement('div');
+  t.className = 'toast toast-' + type;
+  t.innerHTML = (type==='ok' ? '✅' : '❌') + ' ' + msg;
+  document.getElementById('toast').appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
 
 function statusBadge(s) {
   const map = { ACTIVE:'badge-green', INACTIVE:'badge-gray', ARCHIVED:'badge-yellow' };
   return `<span class="badge ${map[s]||'badge-gray'}">${s||'—'}</span>`;
 }
+
 function envTypeBadge(t) {
-  const map = { PRODUCTION:'badge-red', STAGING:'badge-yellow', DEVELOPMENT:'badge-blue' };
+  const map = { DEV:'badge-blue', STAGING:'badge-yellow', PRODUCTION:'badge-green' };
   return `<span class="badge ${map[t]||'badge-gray'}">${t||'—'}</span>`;
 }
+
 function depStatusBadge(s) {
-  const map = { SUCCESS:'badge-green', FAILED:'badge-red', IN_PROGRESS:'badge-blue', PENDING:'badge-gray' };
+  const map = { SUCCESS:'badge-green', FAILED:'badge-red', IN_PROGRESS:'badge-blue', PENDING:'badge-gray', ROLLED_BACK:'badge-yellow' };
   return `<span class="badge ${map[s]||'badge-gray'}">${s||'—'}</span>`;
 }
 
-function toast(msg, type='ok') {
-  const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
-  el.innerHTML = (type==='ok'?'✓':'✗') + ' ' + msg;
-  document.getElementById('toast').appendChild(el);
-  setTimeout(() => el.remove(), 3500);
+function emptyState(icon, msg) {
+  return `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">${icon}</div><p>${msg}</p></div></td></tr>`;
 }
-
-// enter key on auth inputs
-document.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    if (!document.getElementById('view-login').classList.contains('hidden')) doLogin();
-    else if (!document.getElementById('view-register').classList.contains('hidden')) doRegister();
-  }
-});
-
-// close modal on backdrop click
-document.getElementById('modal').addEventListener('click', e => {
-  if (e.target === document.getElementById('modal')) closeModal();
-});
 </script>
 </body>
 </html>

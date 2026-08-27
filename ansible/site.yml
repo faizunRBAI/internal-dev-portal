@@ -1,6 +1,6 @@
 ---
 # ansible/site.yml
-# Deploy: Nginx + PostgreSQL Docker container + Spring Boot app container
+# Deploy: Nginx + PostgreSQL Docker container + Spring Boot app container + HTTPS
 
 - name: Deploy Internal Developer Portal
   hosts: app
@@ -16,6 +16,8 @@
     env_dir: /opt/idp
     ghcr_image_lower: "{{ lookup('env', 'GHCR_IMAGE') | lower }}"
     image_tag: "{{ lookup('env', 'IMAGE_TAG') }}"
+    domain: devportal.royalbengal.xyz
+    certbot_email: admin@royalbengal.xyz
 
   tasks:
 
@@ -46,10 +48,13 @@
         group: root
       no_log: true
 
-    # ── Nginx ──────────────────────────────────────────────────────────────
-    - name: Install Nginx
+    # ── Nginx + Certbot ───────────────────────────────────────────────────
+    - name: Install Nginx and Certbot
       ansible.builtin.apt:
-        name: nginx
+        name:
+          - nginx
+          - certbot
+          - python3-certbot-nginx
         state: present
         update_cache: true
 
@@ -58,25 +63,69 @@
         path: /etc/nginx/sites-enabled/default
         state: absent
 
-    - name: Write Nginx vhost config from template
-      ansible.builtin.template:
-        src: templates/nginx-idp.conf.j2
+    - name: Write temporary HTTP-only Nginx config (for certbot challenge)
+      ansible.builtin.copy:
         dest: "{{ nginx_conf_path }}"
         mode: '0644'
-      notify: Reload Nginx
+        content: |
+          server {
+              listen 80;
+              server_name {{ domain }} _;
+              client_max_body_size 10m;
+              location / {
+                  proxy_pass http://127.0.0.1:{{ app_port }};
+                  proxy_set_header Host $host;
+                  proxy_set_header X-Real-IP $remote_addr;
+                  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                  proxy_set_header X-Forwarded-Proto $scheme;
+                  proxy_read_timeout 60s;
+              }
+          }
 
     - name: Enable Nginx vhost
       ansible.builtin.file:
         src: "{{ nginx_conf_path }}"
         dest: /etc/nginx/sites-enabled/idp
         state: link
-      notify: Reload Nginx
 
-    - name: Ensure Nginx is running
+    - name: Ensure Nginx is running (needed for ACME challenge)
       ansible.builtin.service:
         name: nginx
         state: started
         enabled: true
+
+    - name: Reload Nginx with temp config
+      ansible.builtin.service:
+        name: nginx
+        state: reloaded
+
+    - name: Check if SSL certificate already exists
+      ansible.builtin.stat:
+        path: /etc/letsencrypt/live/{{ domain }}/fullchain.pem
+      register: cert_stat
+
+    - name: Obtain Let's Encrypt certificate (if not already present)
+      ansible.builtin.shell:
+        cmd: >
+          certbot certonly --nginx --non-interactive --agree-tos
+          -m {{ certbot_email }}
+          -d {{ domain }}
+      when: not cert_stat.stat.exists
+      changed_when: true
+
+    - name: Write final Nginx config with SSL from template
+      ansible.builtin.template:
+        src: templates/nginx-idp.conf.j2
+        dest: "{{ nginx_conf_path }}"
+        mode: '0644'
+      notify: Reload Nginx
+
+    - name: Ensure certbot renewal timer is enabled
+      ansible.builtin.service:
+        name: certbot.timer
+        state: started
+        enabled: true
+      failed_when: false
 
     # ── GHCR login ─────────────────────────────────────────────────────────
     - name: Log in to GHCR
