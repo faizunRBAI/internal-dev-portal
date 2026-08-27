@@ -51,14 +51,7 @@ class os_hardening {
     owner   => 'root',
     group   => 'root',
     mode    => '0644',
-    content => @("EOT")
-      PermitRootLogin no
-      PasswordAuthentication no
-      MaxAuthTries 3
-      ClientAliveInterval 300
-      ClientAliveCountMax 2
-      X11Forwarding no
-      | EOT
+    content => "PermitRootLogin no\nPasswordAuthentication no\nMaxAuthTries 3\nClientAliveInterval 300\nClientAliveCountMax 2\nX11Forwarding no\n",
     notify  => Service['ssh'],
   }
 
@@ -72,11 +65,7 @@ class os_hardening {
     owner   => 'root',
     group   => 'root',
     mode    => '0644',
-    content => @("EOT")
-      net.ipv4.conf.all.accept_redirects = 0
-      net.ipv4.conf.all.send_redirects = 0
-      net.ipv4.tcp_syncookies = 1
-      | EOT
+    content => "net.ipv4.conf.all.accept_redirects = 0\nnet.ipv4.conf.all.send_redirects = 0\nnet.ipv4.tcp_syncookies = 1\n",
     notify  => Exec['sysctl-reload'],
   }
 
